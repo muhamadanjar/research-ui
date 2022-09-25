@@ -2,15 +2,16 @@ import Map from "ol/Map";
 import TileLayer from "ol/layer/Tile";
 import SourceTileWMS from "ol/source/TileWMS";
 import { Vector as VectorLayer, VectorTile as VectorTileLayer } from "ol/layer";
-import { Vector as VectorSource, TileArcGISRest, VectorTile as VectorTileSource } from "ol/source";
+import { Vector as VectorSource, TileArcGISRest, VectorTile as VectorTileSource, WMTS } from "ol/source";
 import { Feature, View } from "ol";
 import { Point } from "ol/geom";
-import { transform } from "ol/proj";
+import { get, transform } from "ol/proj";
 import { KML as FormatKML, WMSCapabilities, MVT } from "ol/format";
 import axios from "axios";
-import { Extent } from "ol/extent";
+import { Extent, getTopLeft, getWidth } from "ol/extent";
 import { createXYZ } from "ol/tilegrid"
 import { Style, Fill as styleFill, Stroke as styleStroke } from "ol/style"
+import WMTSTileGrid from "ol/tilegrid/WMTS";
 
 type TypeLocation = {
 	latitude: string | null;
@@ -91,9 +92,10 @@ export default class MapUtils {
 
 	addVectorTileLayer(map: Map, code: string) {
 		const code_epsg = "EPSG:900913";
-		const url = `http://localhost:8080/geoserver/gwc/service/tms/1.0.0/${code}@${code_epsg}@pbf/{z}/{x}/{-y}.pbf`
+		const url = `${import.meta.env.VITE_GEOSERVER_TMS_URL}/1.0.0/${code}@${code_epsg}@pbf/{z}/{x}/{-y}.pbf`
 		const vectorTileLayer = new VectorTileLayer({
 			style: function (feature) {
+				
 				return new Style({
 					fill: new styleFill({
 						color: '#ADD8E6'
@@ -113,6 +115,39 @@ export default class MapUtils {
 		})
 		vectorTileLayer.set("id", code);
 		map.addLayer(vectorTileLayer)
+	}
+
+	addTileLayer(map:Map, code:string, maxZoomTile:number = 22, projectionCode:string = "EPSG:4326", style:string = "") {
+		// const projectionCode = "EPSG:4326" // ESPG:900913 | EPSG:4326
+		const projection = get(projectionCode);
+
+		const projectionExtent = projection?.getExtent();
+		const size = getWidth(projectionExtent!) / 512;
+		const resolutions = new Array(maxZoomTile);
+		const matrixIds = new Array(maxZoomTile);
+		for (let z = 0; z < maxZoomTile; ++z) {
+			resolutions[z] = size / Math.pow(2, z);
+			matrixIds[z] = `${projectionCode}:${z}`;
+		}
+
+		const layer = new TileLayer({
+			source: new WMTS({
+				url: `${import.meta.env.VITE_GEOSERVER_WTMS_URL}`,
+				layer: code,
+				matrixSet: projectionCode,
+				format: 'image/png',
+				projection: projection!,
+				tileGrid: new WMTSTileGrid({
+					origin: getTopLeft(projectionExtent!),
+					resolutions: resolutions,
+					matrixIds: matrixIds,
+				}),
+				style: style,
+				wrapX: true,
+			})
+		})
+		layer.set("id", "wmts_lyr_"+code)
+		map.addLayer(layer);
 	}
 
 	zoomToExtent(map: Map, extent: []): void {
