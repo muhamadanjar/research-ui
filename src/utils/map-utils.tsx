@@ -156,7 +156,7 @@ export default class MapUtils {
 
 	zoomLayerToExtent(map: Map, layer: any): void {
 		const wms_url =
-			"http://localhost:8080/geoserver/wms?service=wms&version=1.1.1&request=GetCapabilities";
+			import.meta.env.BASE_GEOSERVER_URL + "?service=wms&version=1.1.1&request=GetCapabilities";
 		const parser = new WMSCapabilities();
 		console.log("layer", layer);
 		axios.get(wms_url).then((res) => {
