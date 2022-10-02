@@ -29,7 +29,7 @@ const MapContainer: React.FC<MapProps> = () => {
 			view: new View({
 				center:[106.9202854, -6.8494057],
 				// center: transform([106.9202854, -6.8494057], "EPSG:4326", "EPSG:3857"),
-				zoom: 13,
+				zoom: 6,
 				projection: projection,
 				extent: [-180.0,-90.0,180.0,90.0]
 			}),
