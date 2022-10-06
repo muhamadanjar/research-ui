@@ -138,6 +138,7 @@ export default class MapUtils {
 				format: 'image/png',
 				projection: projection!,
 				tileGrid: new WMTSTileGrid({
+					tileSize: [256,256],
 					origin: getTopLeft(projectionExtent!),
 					resolutions: resolutions,
 					matrixIds: matrixIds,
