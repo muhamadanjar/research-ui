@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 
 import "ol/ol.css"
 import TileLayer from "ol/layer/Tile";
-import { OSM, TileWMS as TileWMSSource, WMTS as WMTSSource } from "ol/source";
+import { OSM, TileWMS as TileWMSSource, WMTS as WMTSSource, XYZ } from "ol/source";
 
+import cn from "classnames";
 import { Projection, transform } from "ol/proj"
 import MapUtils from "@/utils/map-utils";
 import http from "@/utils/api/http";
@@ -20,9 +21,10 @@ const mapUtils = new MapUtils();
 interface MapProps {
 	center?: [number, number],
 	layers?: Layer[],
+	className?: string;
 	callbakInfo?: any;
 }
-const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
+const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo, className }) => {
 	const mapElement = useRef<any>(null);
 	const mapRef = useRef<any>(null);
 	const [stateInfo, setStateInfo] = useState<any>([]);
@@ -35,6 +37,8 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 				center: [106.9202854, -6.8494057],
 				// center: transform([106.9202854, -6.8494057], "EPSG:4326", "EPSG:3857"),
 				zoom: 6,
+				minZoom: 5,
+				maxZoom: 12,
 				projection: projection,
 				extent: [-180.0, -90.0, 180.0, 90.0]
 			}),
@@ -100,17 +104,17 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 							LAYERS: layer.get("code"),
 							FEATURE_COUNT: 20,
 						});
-					
+
 				} else {
 					url = layer.getSource().getUrls()[0]
 					let source = layer.getSource();
 					let tilegrid = source.getTileGrid();
 					let resolution = mapRef.current.getView().getResolution();
 					let tileResolutions = tilegrid.getResolutions();
-					let zoomIdx:any, diff = Infinity;
+					let zoomIdx: any, diff = Infinity;
 					for (var i = 0; i < tileResolutions.length; i++) {
 						var tileResolution = tileResolutions[i];
-						var diffP = Math.abs(resolution-tileResolution);
+						var diffP = Math.abs(resolution - tileResolution);
 						if (diffP < diff) {
 							diff = diffP;
 							zoomIdx = i;
@@ -120,7 +124,7 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 						}
 					}
 					var tileSize = tilegrid.getTileSize(zoomIdx);
-  					var tileOrigin = tilegrid.getOrigin(zoomIdx);
+					var tileOrigin = tilegrid.getOrigin(zoomIdx);
 
 					var fx = (event.coordinate[0] - tileOrigin[0]) / (resolution * tileSize[0]);
 					var fy = (tileOrigin[1] - event.coordinate[1]) / (resolution * tileSize[1]);
@@ -133,7 +137,7 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 
 
 					let params = new URLSearchParams({
-						SERVICE:"WMTS",
+						SERVICE: "WMTS",
 						REQUEST: "GetFeatureInfo",
 						INFOFORMAT: "application/json",
 						LAYER: source.getLayer(),
@@ -141,44 +145,44 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 						TILEMATRIX: matrixIds,
 						TileCol: tileCol.toFixed(),
 						TileRow: tileRow.toString(),
-						I:tileI.toFixed(),
-						J:tileJ.toFixed()
+						I: tileI.toFixed(),
+						J: tileJ.toFixed()
 					})
-					url = url.concat('?'+params.toString());
+					url = url.concat('?' + params.toString());
 					console.log(url);
 
 				}
 
 				if (url) {
 
-						const response = await http.get(url);
+					const response = await http.get(url);
 
-						const json = response.data
+					const json = response.data
 
-						const dataCount = json.numberReturned;
-						if (json.features) {
+					const dataCount = json.numberReturned;
+					if (json.features) {
 
-							let groupFeature: any = [];
-							for (let idx = 0; idx < json.features.length; idx++) {
-								const element: any = json.features[idx];
-								console.log("element data", element);
-								const elementDataKey = `data-${element.id}`;
-								console.log(elementDataKey);
-								let items = []
-								for (let key in element.properties) {
-									let value = element.properties[key];
-									items.push({ key: key, value: value });
-									console.log(key, value);
-								}
-								groupFeature.push({ keys: elementDataKey, items: items });
-								// groupFeature["items"] = items;
+						let groupFeature: any = [];
+						for (let idx = 0; idx < json.features.length; idx++) {
+							const element: any = json.features[idx];
+							console.log("element data", element);
+							const elementDataKey = `data-${element.id}`;
+							console.log(elementDataKey);
+							let items = []
+							for (let key in element.properties) {
+								let value = element.properties[key];
+								items.push({ key: key, value: value });
+								console.log(key, value);
 							}
-							setStateInfo(groupFeature);
-
-							callbakInfo(groupFeature);
+							groupFeature.push({ keys: elementDataKey, items: items });
+							// groupFeature["items"] = items;
 						}
+						setStateInfo(groupFeature);
 
+						callbakInfo(groupFeature);
 					}
+
+				}
 			}
 
 		}
@@ -212,12 +216,27 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo }) => {
 			}
 		});
 		// mapUtils.addVectorTileLayer(mapRef.current, "sukabumi:data_grid_from_xyz");
+
+		// let mapnik = new TileLayer({
+		// 	source: new XYZ({
+		// 		url:"http://localhost:8000/{z}/{x}/{y}"
+		// 	}),
+		// });
+		// mapRef.current?.addLayer(mapnik);
+		mapRef.current.on('moveend', function () {
+			var view = mapRef.current.getView();
+			console.log("zoom level", view.getZoom());
+			// setCurrentZoom(view.getZoom())
+		}, this);
 		mapRef.current?.on("click", onMapClick);
 	}, [])
 
 
 	return (<>
-		<div ref={mapElement} style={{ height: '100vh' }}></div>
+		<div className={cn("relative", className)}>
+
+			<div ref={mapElement} id="mapElement" className="h-fit w-full" style={{ width:'100%', height: '100vh' }}></div>
+		</div>
 	</>);
 }
 
