@@ -33,7 +33,7 @@ const Map: React.FC = () => {
   const [layers, setLayers] = useState<Layer[]>([
     {
     url: import.meta.env.GEOSERVER_URL,
-    code: "sidik:data_grid_from_xyz",
+    code: "sidik:sd",
     name: "Grid Indonesia",
     is_active: true,
     type: "wmts"
