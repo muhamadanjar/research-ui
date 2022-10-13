@@ -22,18 +22,20 @@ interface MapProps {
 	center?: [number, number],
 	layers?: Layer[],
 	className?: string;
+	mapClassName?: string;
 	callbakInfo?: any;
+	mapView?: View,
+	mapHeight?: string;
 }
-const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo, className }) => {
+const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo, className, mapClassName="h-fit w-full", mapView, mapHeight = "100vh" }) => {
 	const mapElement = useRef<any>(null);
 	const mapRef = useRef<any>(null);
 	const [stateInfo, setStateInfo] = useState<any>([]);
 
 	const initialMap = () => {
-
-		const map = new Map({
-			target: mapElement.current,
-			view: new View({
+		let view;		
+		if(!mapView){
+			view = new View({
 				center: [106.9202854, -6.8494057],
 				// center: transform([106.9202854, -6.8494057], "EPSG:4326", "EPSG:3857"),
 				zoom: 6,
@@ -41,7 +43,13 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo, className }) =>
 				maxZoom: 12,
 				projection: projection,
 				extent: [-180.0, -90.0, 180.0, 90.0]
-			}),
+			})
+		}else{
+			view = mapView
+		}
+		const map = new Map({
+			target: mapElement.current,
+			view: view,
 
 			layers: [
 				new TileLayer({
@@ -215,27 +223,20 @@ const MapContainer: React.FC<MapProps> = ({ layers, callbakInfo, className }) =>
 				);
 			}
 		});
-		// mapUtils.addVectorTileLayer(mapRef.current, "sukabumi:data_grid_from_xyz");
-
-		// let mapnik = new TileLayer({
-		// 	source: new XYZ({
-		// 		url:"http://localhost:8000/{z}/{x}/{y}"
-		// 	}),
-		// });
-		// mapRef.current?.addLayer(mapnik);
 		mapRef.current.on('moveend', function () {
 			var view = mapRef.current.getView();
 			console.log("zoom level", view.getZoom());
 			// setCurrentZoom(view.getZoom())
 		}, this);
 		mapRef.current?.on("click", onMapClick);
+		console.log("map view", mapView);
 	}, [])
 
 
 	return (<>
 		<div className={cn("relative", className)}>
 
-			<div ref={mapElement} id="mapElement" className="h-fit w-full" style={{ width:'100%', height: '100vh' }}></div>
+			<div ref={mapElement} id="mapElement" className={cn(mapClassName)} style={{ width:'100%', height: mapHeight }}></div>
 		</div>
 	</>);
 }
